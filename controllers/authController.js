@@ -12,6 +12,7 @@ exports.register = async (req, res) => {
     province,
     country,
     age,
+    role = "user",  // Role default adalah user
   } = req.body;
 
   // Validasi input
@@ -49,7 +50,7 @@ exports.register = async (req, res) => {
         province,
         country,
         age,
-        "user",
+        role,  // Menggunakan role yang diterima dari request
       ],
       (err) => {
         if (err) {
@@ -64,6 +65,7 @@ exports.register = async (req, res) => {
     res.status(500).json({ message: "Terjadi kesalahan pada server." });
   }
 };
+
 
 exports.login = async (req, res) => {
   const { email, password } = req.body;

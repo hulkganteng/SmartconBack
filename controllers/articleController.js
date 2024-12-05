@@ -1,6 +1,7 @@
 const multer = require("multer");
 const path = require("path");
 const db = require("../models/db");
+const { authenticateToken, authorizeRole } = require("../middlewares/authMiddleware"); // Import middleware
 
 // Middleware untuk upload file
 const storage = multer.diskStorage({
@@ -42,6 +43,25 @@ const getAllArticles = (req, res) => {
   });
 };
 
+// Controller untuk mendapatkan artikel berdasarkan ID
+const getArticleById = (req, res) => {
+  const { id } = req.params;
+
+  // Query database untuk mendapatkan artikel berdasarkan ID
+  db.query("SELECT * FROM articles WHERE id = ?", [id], (err, results) => {
+    if (err) {
+      console.error("Database error:", err.message); // Debugging log
+      return res.status(500).json({ error: "Gagal mengambil artikel." });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({ error: "Artikel tidak ditemukan." });
+    }
+
+    res.status(200).json(results[0]); // Kirim data artikel
+  });
+};
+
 // Controller untuk mengunggah artikel
 const uploadArticle = (req, res) => {
   const { title, content, author, categories } = req.body;
@@ -66,9 +86,52 @@ const uploadArticle = (req, res) => {
   );
 };
 
+// Controller untuk memperbarui artikel
+const updateArticle = (req, res) => {
+  const { id } = req.params;
+  const { title, content, author, categories } = req.body;
+  const image = req.file ? `/uploads/${req.file.filename}` : null;
+
+  if (!title || !content || !author) {
+    return res.status(400).json({ error: "Semua data wajib diisi!" });
+  }
+
+  // Query untuk update artikel
+  db.query(
+    "UPDATE articles SET title = ?, content = ?, author = ?, categories = ?, image = ? WHERE id = ?",
+    [title, content, author, categories, image, id],
+    (err) => {
+      if (err) {
+        console.error("Database error:", err.message);
+        return res.status(500).json({ error: "Gagal memperbarui artikel." });
+      }
+
+      res.status(200).json({ message: "Artikel berhasil diperbarui!" });
+    }
+  );
+};
+
+// Controller untuk menghapus artikel
+const deleteArticle = (req, res) => {
+  const { id } = req.params;
+
+  // Query untuk menghapus artikel
+  db.query("DELETE FROM articles WHERE id = ?", [id], (err) => {
+    if (err) {
+      console.error("Database error:", err.message);
+      return res.status(500).json({ error: "Gagal menghapus artikel." });
+    }
+
+    res.status(200).json({ message: "Artikel berhasil dihapus!" });
+  });
+};
+
 // Ekspor semua fungsi
 module.exports = {
   getAllArticles,
+  getArticleById,
   uploadArticle,
+  updateArticle,
+  deleteArticle,
   uploadMiddleware,
 };

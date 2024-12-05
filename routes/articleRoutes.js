@@ -3,9 +3,14 @@ const db = require("../models/db");
 
 const {
   getAllArticles,
+  getArticleById,
   uploadArticle,
   uploadMiddleware,
+  updateArticle,
+  deleteArticle,
 } = require("../controllers/articleController");
+
+const { authenticateToken, authorizeRole } = require("../middlewares/authMiddleware"); // Import middleware
 
 const router = express.Router();
 
@@ -13,30 +18,15 @@ const router = express.Router();
 router.get("/", getAllArticles);
 
 // Route untuk mendapatkan artikel berdasarkan ID
-router.get("/:id", (req, res) => {
-  const { id } = req.params;
+router.get("/:id", getArticleById);
 
-  // Log ID untuk debugging
-  console.log("Fetching article with ID:", id);
+// Route untuk upload artikel baru dengan gambar, hanya bisa diakses oleh admin
+router.post("/upload", authenticateToken, authorizeRole("admin"), uploadMiddleware, uploadArticle);
 
-  // Query database untuk mendapatkan artikel berdasarkan ID
-  db.query("SELECT * FROM articles WHERE id = ?", [id], (err, results) => {
-    if (err) {
-      console.error("Database error:", err.message); // Debugging log
-      return res.status(500).json({ error: "Gagal mengambil artikel." });
-    }
+// Route untuk memperbarui artikel berdasarkan ID
+router.put("/:id", authenticateToken, authorizeRole("admin"), uploadMiddleware, updateArticle);
 
-    if (results.length === 0) {
-      console.log("Artikel tidak ditemukan untuk ID:", id); // Debugging log
-      return res.status(404).json({ error: "Artikel tidak ditemukan." });
-    }
-
-    console.log("Artikel ditemukan:", results[0]); // Debugging log artikel
-    res.status(200).json(results[0]); // Kirim data artikel
-  });
-});
-
-// Route untuk upload artikel baru dengan gambar
-router.post("/upload", uploadMiddleware, uploadArticle);
+// Route untuk menghapus artikel berdasarkan ID
+router.delete("/:id", authenticateToken, authorizeRole("admin"), deleteArticle);
 
 module.exports = router;
