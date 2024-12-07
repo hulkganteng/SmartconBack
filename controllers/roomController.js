@@ -1,48 +1,57 @@
-const db = require("../models/db");
+const Room = require('../models/Room');  // Import model room jika diperlukan
+const Message = require('../models/Message'); // Import model message jika diperlukan
 
-// Fungsi untuk membuat room baru
-exports.createRoom = (req, res) => {
-  const { roomName } = req.body;
-  const userId = req.user.user_id; // ID pengguna yang membuat room
-
-  db.query("INSERT INTO rooms (name, created_by) VALUES (?, ?)", [roomName, userId], (err, result) => {
-    if (err) {
-      return res.status(500).json({ message: "Failed to create room", error: err });
+// Fungsi untuk mengambil semua room
+const getRooms = async (req, res) => {
+  try {
+    // Ambil semua rooms dari database
+    const rooms = await Room.find();
+    
+    if (rooms.length === 0) {
+      // Jika belum ada room, buat room default (Umum)
+      const defaultRoom = new Room({ name: 'Umum' });
+      await defaultRoom.save();
+      return res.status(200).json([defaultRoom]);
     }
 
-    const roomId = result.insertId;
-    // Tambahkan user ke room_members setelah room dibuat
-    db.query("INSERT INTO room_members (room_id, user_id) VALUES (?, ?)", [roomId, userId], (err, result) => {
-      if (err) {
-        return res.status(500).json({ message: "Failed to add user to room", error: err });
-      }
-
-      res.status(200).json({ message: "Room created successfully", roomId });
-    });
-  });
+    res.status(200).json(rooms); // Mengembalikan semua room yang ada
+  } catch (error) {
+    console.error("Error fetching rooms:", error);
+    res.status(500).json({ message: "Gagal memuat rooms" });
+  }
 };
 
-// Bergabung ke room yang sudah ada
-exports.joinRoom = (req, res) => {
-  const { roomId } = req.body;
-  const userId = req.user.user_id; // ID pengguna yang bergabung
-
-  db.query("INSERT INTO room_members (room_id, user_id) VALUES (?, ?)", [roomId, userId], (err, result) => {
-    if (err) {
-      return res.status(500).json({ message: "Failed to join room", error: err });
-    }
-    res.status(200).json({ message: "Joined room successfully", roomId });
-  });
-};
-
-// Mengambil riwayat pesan dalam room tertentu
-exports.getRoomHistory = (req, res) => {
+// Fungsi untuk mengambil pesan dalam room
+const getMessagesInRoom = async (req, res) => {
   const { roomId } = req.params;
+  try {
+    // Ambil pesan berdasarkan roomId
+    const messages = await Message.find({ roomId });
 
-  db.query("SELECT * FROM messages WHERE room_id = ? ORDER BY timestamp ASC", [roomId], (err, results) => {
-    if (err) {
-      return res.status(500).json({ message: "Failed to fetch room history", error: err });
-    }
-    res.json(results);
-  });
+    res.status(200).json(messages); // Mengembalikan pesan
+  } catch (error) {
+    console.error("Error fetching messages:", error);
+    res.status(500).json({ message: "Gagal memuat pesan" });
+  }
 };
+
+// Fungsi untuk menambah pesan baru
+const sendMessage = async (req, res) => {
+  const { roomId, sender, content } = req.body;
+  try {
+    const message = new Message({
+      roomId,
+      sender,
+      content,
+    });
+    
+    await message.save();
+    
+    res.status(201).json(message); // Mengembalikan pesan yang baru dikirim
+  } catch (error) {
+    console.error("Error sending message:", error);
+    res.status(500).json({ message: "Gagal mengirim pesan" });
+  }
+};
+
+module.exports = { getRooms, getMessagesInRoom, sendMessage };

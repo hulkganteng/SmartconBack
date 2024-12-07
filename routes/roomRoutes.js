@@ -1,15 +1,14 @@
-// routes/roomRoutes.js
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const { createRoom, joinRoom, getRoomHistory } = require("../controllers/roomController");
+const { getRooms, getMessagesInRoom, sendMessage } = require('../controllers/roomController');
 
-// Membuat room baru
-router.post("/create", createRoom);
+// Route untuk mengambil semua room
+router.get('/rooms', getRooms);
 
-// Bergabung ke room yang ada
-router.post("/join", joinRoom);
+// Route untuk mengambil pesan dalam sebuah room
+router.get('/rooms/:roomId/messages', getMessagesInRoom);
 
-// Mengambil riwayat chat dalam room
-router.get("/:roomId/history", getRoomHistory);
+// Route untuk mengirim pesan ke room tertentu
+router.post('/rooms/:roomId/messages', sendMessage);
 
 module.exports = router;

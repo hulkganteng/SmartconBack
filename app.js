@@ -3,6 +3,7 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const path = require("path");
 const fs = require("fs");
+const multer = require("multer");  // Tambahkan import multer di sini
 require("dotenv").config(); // Memuat konfigurasi dari file .env
 const http = require("http");  // Import http untuk menjalankan server
 const socketIo = require("socket.io");  // Import socket.io
@@ -14,25 +15,31 @@ const authRoutes = require("./routes/authRoutes");
 const articleRoutes = require("./routes/articleRoutes");
 const forumRoutes = require("./routes/forumRoutes");
 const chatRoutes = require("./routes/chatRoutes");
+const diseaseDetectionRoutes = require("./routes/diseaseDetectionRoutes"); 
+const historyRoutes = require("./routes/historyRoutes")
 
 const app = express();
 const server = http.createServer(app);  // Membuat server HTTP
 
-
 const io = socketIo(server, {
   cors: {
-    origin: "http://localhost:3000",  // Sesuaikan dengan frontend Anda
+    origin: "http://localhost:3000",  // Pastikan URL ini benar sesuai dengan frontend
     methods: ["GET", "POST"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"],  // Sesuaikan header yang digunakan
   },
-  transports: ["websocket"],  // Memaksa WebSocket tanpa fallback ke XHR
+  transports: ["websocket"],  // Memaksa WebSocket, cocok untuk penggunaan yang lebih stabil
 });
-
 
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
+
+// Membuat folder uploads/detection jika belum ada
+const detectionDir = path.join(__dirname, "uploads", "detection");
+if (!fs.existsSync(detectionDir)) {
+  fs.mkdirSync(detectionDir, { recursive: true });
+  console.log(`Folder detection uploads berhasil dibuat: ${detectionDir}`);
+}
 
 // Membuat folder uploads jika belum ada
 const uploadDir = path.join(__dirname, "uploads");
@@ -43,18 +50,15 @@ if (!fs.existsSync(uploadDir)) {
 
 // Middleware untuk mengakses folder uploads secara publik
 app.use("/uploads", express.static(uploadDir));
+app.use("/uploads/detection", express.static(detectionDir));
 
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/articles", articleRoutes);
 app.use("/api/forums", forumRoutes);
 app.use("/api/chats", chatRoutes);
-
-
-// Socket.IO Configuration with Authentication
-// app.js
-
-
+app.use("/api/disease-detection", diseaseDetectionRoutes);
+app.use("/api/history",historyRoutes);
 
 // Socket.IO Configuration with Authentication
 io.use((socket, next) => {
@@ -74,67 +78,50 @@ io.use((socket, next) => {
 
 // Ketika pengguna berhasil terhubung
 io.on("connection", (socket) => {
-  console.log("A user connected:", socket.id, socket.user);
+  console.log("A user connected:", socket.id);
 
-  // Kirim data user ke frontend setelah koneksi berhasil
-  socket.emit("user_authenticated", { username: socket.user.username });
+  // Event ketika pengguna bergabung ke room
+  socket.on("join_room", ({ username, room }) => {
+    socket.join(room);
+    console.log(`${username} joined room: ${room}`);
 
-  // Ambil roomId dari query parameter saat pengguna bergabung ke room
-  const roomId = socket.handshake.query.roomId;
-  if (roomId) {
-    socket.join(roomId);  // Menghubungkan socket ke room tertentu
-
-    // Mengambil riwayat chat saat pengguna bergabung
-    db.query("SELECT * FROM messages WHERE room_id = ? ORDER BY timestamp ASC", [roomId], (err, messages) => {
+    // Kirim riwayat chat ketika user bergabung
+    db.query("SELECT * FROM messages WHERE room_id = ? ORDER BY timestamp ASC", [room], (err, messages) => {
       if (err) {
         console.error("Failed to fetch chat history:", err);
         return;
       }
-      socket.emit("chat_history", messages);  // Kirim riwayat chat ke pengguna yang baru bergabung
+      socket.emit("chat_history", messages);  // Mengirim riwayat chat ke pengguna yang baru bergabung
     });
-  }
-
-  // Event listener untuk pengiriman pesan
-  socket.on("send_message", (message) => {
-    console.log("Message received:", message);
-
-    const { content, receiverId, roomId } = message;
-    const senderId = socket.user.user_id;  // ID pengirim dari socket
-
-    if (!content || !receiverId || !senderId || !roomId) {
-      socket.emit("message_error", { message: "Content, sender, receiver, or room is missing" });
-      return;
-    }
-
-    // Simpan pesan ke database
-    db.query(
-      "INSERT INTO messages (sender_id, receiver_id, room_id, content, timestamp) VALUES (?, ?, ?, ?, NOW())",
-      [senderId, receiverId, roomId, content],
-      (err, result) => {
-        if (err) {
-          console.error("Error saving message to database:", err);
-          socket.emit("message_error", { message: "Failed to send message" });
-          return;
-        }
-
-        // Kirim pesan ke seluruh anggota room
-        io.to(roomId).emit("receive_message", {
-          sender: socket.user.username,
-          content: content,
-          roomId: roomId
-        });
-      }
-    );
   });
 
-  // Event listener untuk pengguna yang terputus
+  // Event ketika pesan dikirim
+  socket.on("send_message", (message) => {
+    const { content, sender, room } = message;
+
+    if (content && sender && room) {
+      // Simpan pesan ke database
+      db.query(
+        "INSERT INTO messages (sender_id, content, room_id, timestamp) VALUES (?, ?, ?, NOW())",
+        [sender, content, room],
+        (err, result) => {
+          if (err) {
+            console.error("Failed to save message to database:", err);
+            return;
+          }
+
+          // Kirim pesan ke seluruh anggota room
+          io.to(room).emit("receive_message", message);
+        }
+      );
+    }
+  });
+
+  // Event ketika pengguna terputus
   socket.on("disconnect", () => {
     console.log("A user disconnected:", socket.id);
   });
 });
-
-
-
 
 // Default Route for Root
 app.get("/", (req, res) => {
@@ -154,6 +141,8 @@ app.use((err, req, res, next) => {
     error: err.message,
   });
 });
+
+
 
 // Start Server (menggunakan server HTTP untuk menambahkan Socket.IO)
 const PORT = process.env.PORT || 3000;
