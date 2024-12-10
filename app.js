@@ -63,63 +63,120 @@ app.use("/api/history",historyRoutes);
 // Socket.IO Configuration with Authentication
 io.use((socket, next) => {
   const token = socket.handshake.query.token; // Ambil token dari query parameter
-  if (token) {
-    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+  if (!token) {
+    console.error("No token provided");
+    return next(new error("Authentication error"));
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) {
+      console.error("JWT verification failed:", err);
+      return next(new error("Authentication error"));
+    }
+
+    const email = decoded.email; // Ambil email dari payload JWT
+    if (!email) {
+      console.error("Token does not contain email");
+      return next(new error("Authentication error"));
+    }
+
+    // Query ke database untuk mendapatkan user_id berdasarkan email
+    db.query("SELECT user_id FROM users WHERE email = ?", [email], (err, results) => {
       if (err) {
-        return next(new Error("Authentication error"));
+        console.error("Database query failed:", err);
+        return next(new error("Database error"));
       }
-      socket.user = decoded; // Menyimpan data user di socket
+
+      if (results.length === 0) {
+        console.error("User not found for the given email");
+        return next(new error("Authentication error"));
+      }
+
+      const user_id = results[0].user_id; // Ambil user_id dari hasil query
+      console.log("Authenticated user_id from DB:", user_id);
+      socket.user = { user_id }; // Simpan user_id di socket
       next();
     });
-  } else {
-    return next(new Error("Authentication error"));
-  }
+  });
 });
 
-// Ketika pengguna berhasil terhubung
+
+
+// Event Socket.IO
 io.on("connection", (socket) => {
-  console.log("A user connected:", socket.id);
+  console.log(`User connected: ${socket.id}`);
 
   // Event ketika pengguna bergabung ke room
-  socket.on("join_room", ({ username, room }) => {
-    socket.join(room);
-    console.log(`${username} joined room: ${room}`);
-
-    // Kirim riwayat chat ketika user bergabung
-    db.query("SELECT * FROM messages WHERE room_id = ? ORDER BY timestamp ASC", [room], (err, messages) => {
+  socket.on("join_room", ({ room_id }) => {
+    if (!room_id) {
+      console.error("Room ID is required to join a room.");
+      return;
+    }
+  
+    socket.join(room_id); // Bergabung ke room tertentu
+    console.log(`User joined room: ${room_id}`);
+  
+    // Kirim riwayat pesan dari room
+    const query = `
+  SELECT messages.*, 
+         CONCAT(users.first_name, ' ', users.last_name) AS sender_name 
+  FROM messages 
+  INNER JOIN users ON messages.sender_id = users.user_id 
+  WHERE messages.room_id = ? 
+  ORDER BY messages.timestamp ASC
+`;
+  
+    db.query(query, [room_id], (err, messages) => {
       if (err) {
         console.error("Failed to fetch chat history:", err);
         return;
       }
-      socket.emit("chat_history", messages);  // Mengirim riwayat chat ke pengguna yang baru bergabung
+      socket.emit("chat_history", messages); // Kirim riwayat pesan ke pengguna
     });
   });
+  
 
-  // Event ketika pesan dikirim
-  socket.on("send_message", (message) => {
-    const { content, sender, room } = message;
-
-    if (content && sender && room) {
-      // Simpan pesan ke database
-      db.query(
-        "INSERT INTO messages (sender_id, content, room_id, timestamp) VALUES (?, ?, ?, NOW())",
-        [sender, content, room],
-        (err, result) => {
-          if (err) {
-            console.error("Failed to save message to database:", err);
-            return;
-          }
-
-          // Kirim pesan ke seluruh anggota room
-          io.to(room).emit("receive_message", message);
-        }
-      );
+  // Event ketika pengguna mengirim pesan
+  socket.on("send_message", ({ content, room_id }) => {
+    if (!content || !room_id) {
+      console.error("Message content and room ID are required.");
+      return;
     }
+  
+    const sender_id = socket.user?.user_id; // Ambil sender_id dari token JWT
+  
+    if (!sender_id) {
+      console.error("Sender ID is null or undefined. Check token verification.");
+      return;
+    }
+  
+    // Siapkan data pesan
+    const message = {
+      sender_id,
+      content,
+      room_id,
+      timestamp: new Date(),
+    };
+  
+    // Simpan pesan ke database
+    db.query(
+      "INSERT INTO messages (sender_id, room_id, content, timestamp) VALUES (?, ?, ?, NOW())",
+      [sender_id, room_id, content],
+      (err) => {
+        if (err) {
+          console.error("Failed to save message to database:", err);
+          return;
+        }
+  
+        // Broadcast pesan ke semua klien di room
+        io.to(room_id).emit("receive_message", message);
+      }
+    );
   });
 
   // Event ketika pengguna terputus
   socket.on("disconnect", () => {
-    console.log("A user disconnected:", socket.id);
+    console.log(`User disconnected: ${socket.id}`);
   });
 });
 
