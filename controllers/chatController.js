@@ -46,6 +46,25 @@ const chatController = {
       }
     );
   },
+
+  // Menghapus riwayat chat berdasarkan room_id
+  deleteChatHistory: (req, res) => {
+    const { roomId } = req.params; // Mendapatkan room_id dari parameter URL
+
+    if (!roomId) {
+      return res.status(400).json({ message: "Room ID is required." });
+    }
+
+    // Query untuk menghapus semua pesan dari room tertentu
+    db.query("DELETE FROM messages WHERE room_id = ?", [roomId], (err, result) => {
+      if (err) {
+        console.error("Error deleting chat history:", err);
+        return res.status(500).json({ message: "Error deleting chat history." });
+      }
+
+      return res.status(200).json({ message: "Chat history deleted successfully." });
+    });
+  },
 };
 
 module.exports = chatController;

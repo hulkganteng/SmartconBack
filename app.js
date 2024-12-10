@@ -150,29 +150,42 @@ io.on("connection", (socket) => {
       return;
     }
   
-    // Siapkan data pesan
-    const message = {
-      sender_id,
-      content,
-      room_id,
-      timestamp: new Date(),
-    };
-  
-    // Simpan pesan ke database
-    db.query(
-      "INSERT INTO messages (sender_id, room_id, content, timestamp) VALUES (?, ?, ?, NOW())",
-      [sender_id, room_id, content],
-      (err) => {
-        if (err) {
-          console.error("Failed to save message to database:", err);
-          return;
-        }
-  
-        // Broadcast pesan ke semua klien di room
-        io.to(room_id).emit("receive_message", message);
+    // Ambil nama pengguna dari database
+    db.query("SELECT CONCAT(first_name, ' ', last_name) AS sender_name FROM users WHERE user_id = ?", [sender_id], (err, results) => {
+      if (err || results.length === 0) {
+        console.error("Error fetching sender name:", err);
+        return;
       }
-    );
+  
+      const sender_name = results[0].sender_name;
+  
+      // Siapkan data pesan
+      const message = {
+        sender_id,
+        sender_name,
+        content,
+        room_id,
+        timestamp: new Date(),
+      };
+  
+      // Simpan pesan ke database
+      db.query(
+        "INSERT INTO messages (sender_id, room_id, content, timestamp) VALUES (?, ?, ?, NOW())",
+        [sender_id, room_id, content],
+        (err) => {
+          if (err) {
+            console.error("Failed to save message to database:", err);
+            return;
+          }
+  
+          // Broadcast pesan ke semua klien di room
+          io.to(room_id).emit("receive_message", message);
+        }
+      );
+    });
   });
+  
+  
 
   // Event ketika pengguna terputus
   socket.on("disconnect", () => {

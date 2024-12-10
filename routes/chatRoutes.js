@@ -12,4 +12,8 @@ router.get("/:roomId/messages", chatController.getMessages);
 // Mengirim pesan ke room tertentu
 router.post("/send", authorizeRole("user"), chatController.sendMessage);
 
+// Route untuk menghapus riwayat chat berdasarkan room_id
+router.delete("/:roomId", authenticateToken, chatController.deleteChatHistory);
+
+
 module.exports = router;
