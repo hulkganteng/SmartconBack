@@ -1,7 +1,7 @@
-DB_HOST=localhost
-DB_USER=root
+DB_HOST=
+DB_USER=
 DB_PASSWORD=
-DB_NAME=smartcon
-JWT_SECRET=supersecretkey123
-PORT=3000
-AI_API_URL=https://app-corn-disease-classify.1otdb2dtrckz.us-south.codeengine.appdomain.cloud/predict
+DB_NAME=
+JWT_SECRET=
+PORT=
+AI_API_URL=

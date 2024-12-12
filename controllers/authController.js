@@ -12,8 +12,11 @@ exports.register = async (req, res) => {
     province,
     country,
     age,
-    role = "user",  // Role default adalah user
+    role = "user", // Role default adalah user
   } = req.body;
+
+  // Foto default
+  const defaultPhoto = "/images/profile.png"; // Path foto default di server Anda
 
   // Validasi input
   if (!first_name || !last_name || !email || !password || !city || !province || !country || !age) {
@@ -36,11 +39,11 @@ exports.register = async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Simpan user ke database
+    // Simpan user ke database dengan foto default
     db.query(
       `INSERT INTO users 
-      (first_name, last_name, email, password, city, province, country, age, role) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (first_name, last_name, email, password, city, province, country, age, role, photo) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         first_name,
         last_name,
@@ -50,7 +53,8 @@ exports.register = async (req, res) => {
         province,
         country,
         age,
-        role,  // Menggunakan role yang diterima dari request
+        role, // Menggunakan role yang diterima dari request
+        defaultPhoto, // Foto default
       ],
       (err) => {
         if (err) {
@@ -65,6 +69,7 @@ exports.register = async (req, res) => {
     res.status(500).json({ message: "Terjadi kesalahan pada server." });
   }
 };
+
 
 
 exports.login = async (req, res) => {
@@ -112,6 +117,7 @@ exports.login = async (req, res) => {
           last_name: user.last_name,
           email: user.email,
           role: user.role,
+          photo: user.photo,
         },
       });
     });
@@ -120,3 +126,48 @@ exports.login = async (req, res) => {
     res.status(500).json({ message: "Terjadi kesalahan pada server." });
   }
 };
+
+exports.updateProfile = async (req, res) => {
+  const { id } = req.params; // ID user dari parameter
+  const { first_name, last_name } = req.body; // Data nama dari body request
+  const photoPath = req.file ? `/uploads/profiles/${req.file.filename}` : null; // Path foto baru jika ada
+
+  if (!first_name || !last_name) {
+    return res.status(400).json({ message: "Nama depan dan nama belakang wajib diisi." });
+  }
+
+  try {
+    // Buat query update
+    const query = photoPath
+      ? "UPDATE users SET first_name = ?, last_name = ?, photo = ? WHERE user_id = ?"
+      : "UPDATE users SET first_name = ?, last_name = ? WHERE user_id = ?";
+    const params = photoPath
+      ? [first_name, last_name, photoPath, id]
+      : [first_name, last_name, id];
+
+    // Jalankan query untuk update data
+    db.query(query, params, (err, result) => {
+      if (err) {
+        console.error("Database error:", err);
+        return res.status(500).json({ message: "Gagal memperbarui profil." });
+      }
+
+      // Ambil data user yang telah diperbarui
+      db.query("SELECT * FROM users WHERE user_id = ?", [id], (err, users) => {
+        if (err || users.length === 0) {
+          console.error("Gagal mengambil data user setelah update:", err);
+          return res.status(500).json({ message: "Gagal mengambil data user." });
+        }
+
+        res.status(200).json({
+          message: "Profil berhasil diperbarui.",
+          user: users[0], // Data user yang terbaru
+        });
+      });
+    });
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ message: "Terjadi kesalahan pada server." });
+  }
+};
+

@@ -34,6 +34,8 @@ const io = socketIo(server, {
 app.use(cors());
 app.use(bodyParser.json());
 
+
+
 // Membuat folder uploads/detection jika belum ada
 const detectionDir = path.join(__dirname, "uploads", "detection");
 if (!fs.existsSync(detectionDir)) {
@@ -48,9 +50,48 @@ if (!fs.existsSync(uploadDir)) {
   console.log(`Folder uploads berhasil dibuat: ${uploadDir}`);
 }
 
+
+// Membuat folder uploads/profiles jika belum ada
+const profileUploadDir = path.join(__dirname, "uploads", "profiles");
+if (!fs.existsSync(profileUploadDir)) {
+  fs.mkdirSync(profileUploadDir, { recursive: true });
+  console.log(`Folder profiles uploads berhasil dibuat: ${profileUploadDir}`);
+}
+
+// Konfigurasi Multer untuk upload foto profil
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, profileUploadDir); // Folder penyimpanan file
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname}`); // Penamaan file dengan timestamp
+  },
+});
+
+// Filter untuk file gambar
+const fileFilter = (req, file, cb) => {
+  const allowedExtensions = [".png", ".jpg", ".jpeg"];
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (allowedExtensions.includes(ext)) {
+    cb(null, true);
+  } else {
+    cb(new Error("Hanya file gambar yang diperbolehkan!"), false);
+  }
+};
+
+// Middleware upload untuk foto profil
+const uploadProfilePhoto = multer({
+  storage,
+  fileFilter,
+  limits: { fileSize: 2 * 1024 * 1024 }, // Maksimal ukuran file 2MB
+});
+
+
 // Middleware untuk mengakses folder uploads secara publik
 app.use("/uploads", express.static(uploadDir));
 app.use("/uploads/detection", express.static(detectionDir));
+app.use("/uploads/profiles", express.static(profileUploadDir));
+
 
 // Routes
 app.use("/api/auth", authRoutes);
