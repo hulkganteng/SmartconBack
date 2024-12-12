@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Waktu pembuatan: 10 Des 2024 pada 14.31
+-- Waktu pembuatan: 12 Des 2024 pada 13.52
 -- Versi server: 10.4.32-MariaDB
 -- Versi PHP: 8.2.12
 
@@ -87,13 +87,6 @@ CREATE TABLE `disease_logs` (
   `detection_date` date NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data untuk tabel `disease_logs`
---
-
-INSERT INTO `disease_logs` (`id`, `user_id`, `plant_disease`, `detection_date`) VALUES
-(1, 2, 'Hawar Daun Jagung', '2024-01-20');
-
 -- --------------------------------------------------------
 
 --
@@ -157,23 +150,6 @@ CREATE TABLE `messages` (
   `timestamp` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data untuk tabel `messages`
---
-
-INSERT INTO `messages` (`message_id`, `sender_id`, `room_id`, `content`, `timestamp`) VALUES
-(1, 1, 1001, 'Hello, world!', '2024-12-10 07:55:51'),
-(2, 4, 1988, 'hai', '2024-12-10 08:17:56'),
-(3, 11, 1988, 'hai juga', '2024-12-10 08:18:15'),
-(4, 4, 1988, 'apakah kabar', '2024-12-10 08:18:28'),
-(5, 11, 1988, 'bagaimana kabar anda', '2024-12-10 08:21:24'),
-(6, 4, 1988, 'baik', '2024-12-10 08:21:40'),
-(7, 11, 2003, 'hai lukman', '2024-12-10 08:24:28'),
-(8, 11, 2003, 'hai juga', '2024-12-10 08:24:44'),
-(9, 4, 2003, 'apa kabar', '2024-12-10 08:24:56'),
-(10, 11, 2003, 'baik', '2024-12-10 08:25:15'),
-(30, 11, 1, 'hai cak', '2024-12-10 13:09:16');
-
 -- --------------------------------------------------------
 
 --
@@ -222,25 +198,18 @@ CREATE TABLE `users` (
   `country` varchar(255) NOT NULL,
   `age` int(11) NOT NULL,
   `role` enum('user','admin') DEFAULT 'user',
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `photo` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data untuk tabel `users`
 --
 
-INSERT INTO `users` (`user_id`, `first_name`, `last_name`, `email`, `password`, `city`, `province`, `country`, `age`, `role`, `created_at`) VALUES
-(1, 'Admin', 'Smartcon', 'admin@smartcon.com', 'admin_hashed_password', 'Jakarta', 'DKI Jakarta', 'Indonesia', 30, 'admin', '2024-11-23 14:10:35'),
-(2, 'John', 'Doe', 'john.doe@example.com', 'user_hashed_password', 'Bandung', 'Jawa Barat', 'Indonesia', 25, 'user', '2024-11-23 14:10:35'),
-(4, 'lukman', 'bopupa', 'bopupalukman@gmail.com', '$2b$10$udQNFELlBQOvVi4TG7ZEUecdP2Eah67hW1RWqU/Q0pUQ.es6kvU82', 'gresik', 'jatim', 'indo', 20, 'admin', '2024-11-24 03:42:32'),
-(5, 'aldi', 'taher', 'aldidajal@gmail.com', '$2b$10$BQPf6wvU.H3bwx51gc8ymeLEb9Fdafdj1v2olsaFDvA3Dji9q3M3a', 'gresik', 'jawa timur', 'indonesia', 21, 'user', '2024-11-24 04:36:03'),
-(6, 'alfi', 'koplak', 'koplak@gmail.com', '$2b$10$qRLIm0yNxmicv3XJ.CtGbugDCp1s4M/mw6LpHkePwF0aLIyHX4.hu', 'sby', 'jatim', 'ind', 21, 'user', '2024-11-24 14:16:07'),
-(7, 'irfan', '123', 'Gresik@gmail.com', '$2b$10$Wc3B2SwXAJtvX7brS2po2Ogo5aQeTGgUlcuNBVEBnpN4l/CHFNxg6', 'grs', 'jatim', 'ind', 21, 'user', '2024-11-24 14:29:59'),
-(8, 'irfan', 'hakim', 'irfanhakim@gmail.com', '$2b$10$fSX83.lqFW/GDFsbibytT.nIthKrjr.g.LYUNxa1IuqN9pl.egfke', 'gresik', 'jatim', 'indonesia', 20, 'user', '2024-11-26 08:24:38'),
-(9, 'Lukman', 'Admin', 'mussiklukman@gmail.com', 'admin123', 'gresik', 'j-Team', 'Indonesia', 20, 'admin', '2024-12-04 05:56:53'),
-(10, 'lukman', 'koplak', 'lukmankoplak@gmail.com', '$2b$10$ZPSvMdP4YgaXN9Wtz3llAecMhmxUYEsmKn1l8grwY9DK4xWJeHX2i', 'gresik', 'jatim', 'indonesia', 21, 'user', '2024-12-04 13:45:31'),
-(11, 'lukman', 'ganteng', 'lukmanganteng@gmail.com', '$2b$10$Mcd4cwIs/wMnhzSAueFSYev8rx.389fWd2EJIsrh0OdLh/Ik2hymO', 'gresik', 'jteam', 'ind', 20, 'user', '2024-12-07 12:48:25'),
-(12, 'beta', 'tai', 'betai@gmail.com', '$2b$10$2tgs.l2wTwmwOGiOAYqspOx6uh2nKItT90XmPYN5zd1NNSzG/a25a', 'grsk', 'jatim', 'ind', 20, 'user', '2024-12-09 14:02:02');
+INSERT INTO `users` (`user_id`, `first_name`, `last_name`, `email`, `password`, `city`, `province`, `country`, `age`, `role`, `created_at`, `photo`) VALUES
+(1, 'Admin', 'Smartcon', 'admin1@gmail.com', '7488e331b8b64e5794da3fa4eb10ad5d', 'Jakarta', 'DKI Jakarta', 'Indonesia', 30, 'admin', '2024-11-23 14:10:35', NULL),
+(4, 'lukman', 'bopupa', 'bopupalukman@gmail.com', '$2b$10$udQNFELlBQOvVi4TG7ZEUecdP2Eah67hW1RWqU/Q0pUQ.es6kvU82', 'gresik', 'jatim', 'indo', 20, 'admin', '2024-11-24 03:42:32', '/uploads/profiles/1733989832210-me.jpg'),
+(11, 'lukman', 'ganteng', 'lukmanganteng@gmail.com', '$2b$10$Mcd4cwIs/wMnhzSAueFSYev8rx.389fWd2EJIsrh0OdLh/Ik2hymO', 'gresik', 'jteam', 'ind', 20, 'user', '2024-12-07 12:48:25', '/uploads/profiles/1733989426324-me3.jpg');
 
 --
 -- Indexes for dumped tables
@@ -357,7 +326,7 @@ ALTER TABLE `history`
 -- AUTO_INCREMENT untuk tabel `messages`
 --
 ALTER TABLE `messages`
-  MODIFY `message_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
+  MODIFY `message_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
 
 --
 -- AUTO_INCREMENT untuk tabel `rooms`
