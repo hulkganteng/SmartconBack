@@ -23,7 +23,7 @@ const server = http.createServer(app);  // Membuat server HTTP
 
 const io = socketIo(server, {
   cors: {
-    origin: "http://localhost:3000",  // Pastikan URL ini benar sesuai dengan frontend
+    origin: "*",  // Pastikan URL ini benar sesuai dengan frontend
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type", "Authorization"],  // Sesuaikan header yang digunakan
   },
@@ -88,10 +88,12 @@ const uploadProfilePhoto = multer({
 
 
 // Middleware untuk mengakses folder uploads secara publik
-app.use("/uploads", express.static(uploadDir));
-app.use("/uploads/detection", express.static(detectionDir));
-app.use("/uploads/profiles", express.static(profileUploadDir));
-
+//app.use(express.static(__dirname + '/uploads'));
+//app.use(express.static(__dirname + '/uploads/detection'));
+//app.use(express.static(__dirname + '/uploads/profiles'));
+app.use('/uploads', express.static(path.join(__dirname, 'upload')));
+app.use('/uploads/detection', express.static(path.join(__dirname, 'detection')));
+app.use('/uploads/profiles', express.static(path.join(__dirname, 'profiles')));
 
 // Routes
 app.use("/api/auth", authRoutes);
