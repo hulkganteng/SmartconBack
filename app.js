@@ -23,7 +23,7 @@ const server = http.createServer(app);  // Membuat server HTTP
 
 const io = socketIo(server, {
   cors: {
-    origin: "*",  // Pastikan URL ini benar sesuai dengan frontend
+    origin: "https://smartconweb.my.id",  // Pastikan URL ini benar sesuai dengan frontend
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type", "Authorization"],  // Sesuaikan header yang digunakan
   },
