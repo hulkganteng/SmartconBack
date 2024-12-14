@@ -101,7 +101,10 @@ app.use("/api/auth", authRoutes);
 app.use("/api/articles", articleRoutes);
 app.use("/api/forums", forumRoutes);
 app.use("/api/chats", chatRoutes);
-app.use("/api/disease-detection", diseaseDetectionRoutes);
+app.use("/api/disease-detection", (req, res, next) => {
+  console.log("Request diterima di /api/disease-detection dengan path:", req.path);
+  next();
+});
 app.use("/api/history",historyRoutes);
 
 // Socket.IO Configuration with Authentication
