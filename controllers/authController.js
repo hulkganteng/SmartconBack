@@ -171,3 +171,32 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
+exports.getProfile = (req, res) => {
+  const { id } = req.params; // Ambil ID user dari parameter
+
+  // Query database untuk mendapatkan user berdasarkan ID
+  db.query("SELECT * FROM users WHERE user_id = ?", [id], (err, results) => {
+    if (err) {
+      console.error("Database error:", err);
+      return res.status(500).json({ message: "Terjadi kesalahan pada server." });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({ message: "User tidak ditemukan." });
+    }
+
+    const user = results[0];
+
+    // Tambahkan path lengkap untuk foto profil jika ada
+    if (user.photo) {
+      user.photo = `/uploads/profiles/${user.photo}`;
+    }
+
+    res.status(200).json({
+      message: "Data user berhasil diambil.",
+      user,
+    });
+  });
+};
+
+
