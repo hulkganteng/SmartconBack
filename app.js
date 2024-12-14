@@ -91,9 +91,10 @@ const uploadProfilePhoto = multer({
 //app.use(express.static(__dirname + '/uploads'));
 //app.use(express.static(__dirname + '/uploads/detection'));
 //app.use(express.static(__dirname + '/uploads/profiles'));
-app.use('/uploads', express.static(path.join(__dirname, 'upload')));
-app.use('/uploads/detection', express.static(path.join(__dirname, 'detection')));
-app.use('/uploads/profiles', express.static(path.join(__dirname, 'profiles')));
+// Middleware untuk mengakses folder uploads secara publik
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads/detection', express.static(path.join(__dirname, 'uploads/detection')));
+app.use('/uploads/profiles', express.static(path.join(__dirname, 'uploads/profiles')));
 
 // Routes
 app.use("/api/auth", authRoutes);
