@@ -188,9 +188,10 @@ exports.getProfile = (req, res) => {
     const user = results[0];
 
     // Tambahkan path lengkap untuk foto profil jika ada
-    if (user.photo) {
-      user.photo = `/uploads/profiles/${user.photo}`;
+    if (user.photo && !user.photo.startsWith('/uploads/profiles/')) {
+      user.photo = `/uploads/profiles/${user.photo}`; // Tambahkan prefix hanya jika belum ada
     }
+    
 
     res.status(200).json({
       message: "Data user berhasil diambil.",
