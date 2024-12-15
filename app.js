@@ -22,9 +22,10 @@ const historyRoutes = require("./routes/historyRoutes")
 const app = express();
 
 // **Menambahkan SSL - Sertifikat**
-const privateKey = fs.readFileSync("path/to/private-key.pem", "utf8");
-const certificate = fs.readFileSync("path/to/certificate.pem", "utf8");
-const ca = fs.readFileSync("path/to/ca-cert.pem", "utf8");
+const privateKey = fs.readFileSync("/etc/letsencrypt/live/smartconweb.my.id/privkey.pem", "utf8");
+const certificate = fs.readFileSync("/etc/letsencrypt/live/smartconweb.my.id/fullchain.pem", "utf8");
+const ca = fs.readFileSync("/etc/letsencrypt/live/smartconweb.my.id/chain.pem", "utf8");
+
 
 const credentials = { key: privateKey, cert: certificate, ca: ca };
 
