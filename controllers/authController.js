@@ -16,7 +16,7 @@ exports.register = async (req, res) => {
   } = req.body;
 
   // Foto default
-  const defaultPhoto = "/images/profile.png"; // Path foto default di server Anda
+  const defaultPhoto = "../upload/profiles/profile.png"; // Path foto default di server Anda
 
   // Validasi input
   if (!first_name || !last_name || !email || !password || !city || !province || !country || !age) {
