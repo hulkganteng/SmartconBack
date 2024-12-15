@@ -38,7 +38,7 @@ const io = socketIo(server, {
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type", "Authorization"],  // Sesuaikan header yang digunakan
   },
-  transports: ["websocket"],  // Memaksa WebSocket, cocok untuk penggunaan yang lebih stabil
+  transports: ["websocket", "polling"],  // Memaksa WebSocket, cocok untuk penggunaan yang lebih stabil
 });
 
 // Middleware
