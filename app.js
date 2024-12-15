@@ -6,6 +6,7 @@ const fs = require("fs");
 const multer = require("multer");  // Tambahkan import multer di sini
 require("dotenv").config(); // Memuat konfigurasi dari file .env
 const http = require("http");  // Import http untuk menjalankan server
+const https = require("https");  // Import https untuk menjalankan server HTTPS
 const socketIo = require("socket.io");  // Import socket.io
 const jwt = require("jsonwebtoken");
 const db = require("./models/db"); // Pastikan db sudah terhubung dengan database
@@ -19,7 +20,16 @@ const diseaseDetectionRoutes = require("./routes/diseaseDetectionRoutes");
 const historyRoutes = require("./routes/historyRoutes")
 
 const app = express();
-const server = http.createServer(app);  // Membuat server HTTP
+
+// **Menambahkan SSL - Sertifikat**
+const privateKey = fs.readFileSync("path/to/private-key.pem", "utf8");
+const certificate = fs.readFileSync("path/to/certificate.pem", "utf8");
+const ca = fs.readFileSync("path/to/ca-cert.pem", "utf8");
+
+const credentials = { key: privateKey, cert: certificate, ca: ca };
+
+// **Membuat Server HTTPS**
+const server = https.createServer(credentials, app);  // Menggunakan https.createServer dengan sertifikat SSL
 
 const io = socketIo(server, {
   cors: {
@@ -34,63 +44,6 @@ const io = socketIo(server, {
 app.use(cors());
 app.use(bodyParser.json());
 
-
-
-// Membuat folder uploads/detection jika belum ada
-const detectionDir = path.join(__dirname, "uploads", "detection");
-if (!fs.existsSync(detectionDir)) {
-  fs.mkdirSync(detectionDir, { recursive: true });
-  console.log(`Folder detection uploads berhasil dibuat: ${detectionDir}`);
-}
-
-// Membuat folder uploads jika belum ada
-const uploadDir = path.join(__dirname, "uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
-  console.log(`Folder uploads berhasil dibuat: ${uploadDir}`);
-}
-
-
-// Membuat folder uploads/profiles jika belum ada
-const profileUploadDir = path.join(__dirname, "uploads", "profiles");
-if (!fs.existsSync(profileUploadDir)) {
-  fs.mkdirSync(profileUploadDir, { recursive: true });
-  console.log(`Folder profiles uploads berhasil dibuat: ${profileUploadDir}`);
-}
-
-// Konfigurasi Multer untuk upload foto profil
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, profileUploadDir); // Folder penyimpanan file
-  },
-  filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`); // Penamaan file dengan timestamp
-  },
-});
-
-// Filter untuk file gambar
-const fileFilter = (req, file, cb) => {
-  const allowedExtensions = [".png", ".jpg", ".jpeg"];
-  const ext = path.extname(file.originalname).toLowerCase();
-  if (allowedExtensions.includes(ext)) {
-    cb(null, true);
-  } else {
-    cb(new Error("Hanya file gambar yang diperbolehkan!"), false);
-  }
-};
-
-// Middleware upload untuk foto profil
-const uploadProfilePhoto = multer({
-  storage,
-  fileFilter,
-  limits: { fileSize: 2 * 1024 * 1024 }, // Maksimal ukuran file 2MB
-});
-
-
-// Middleware untuk mengakses folder uploads secara publik
-//app.use(express.static(__dirname + '/uploads'));
-//app.use(express.static(__dirname + '/uploads/detection'));
-//app.use(express.static(__dirname + '/uploads/profiles'));
 // Middleware untuk mengakses folder uploads secara publik
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/uploads/detection', express.static(path.join(__dirname, 'uploads/detection')));
@@ -101,11 +54,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/articles", articleRoutes);
 app.use("/api/forums", forumRoutes);
 app.use("/api/chats", chatRoutes);
-app.use("/api/disease-detection", (req, res, next) => {
-  console.log("Request diterima di /api/disease-detection dengan path:", req.path);
-  next();
-});
-app.use("/api/history",historyRoutes);
+app.use("/api/disease-detection", diseaseDetectionRoutes);
+app.use("/api/history", historyRoutes);
 
 // Socket.IO Configuration with Authentication
 io.use((socket, next) => {
@@ -147,8 +97,6 @@ io.use((socket, next) => {
   });
 });
 
-
-
 // Event Socket.IO
 io.on("connection", (socket) => {
   console.log(`User connected: ${socket.id}`);
@@ -159,20 +107,20 @@ io.on("connection", (socket) => {
       console.error("Room ID is required to join a room.");
       return;
     }
-  
+
     socket.join(room_id); // Bergabung ke room tertentu
     console.log(`User joined room: ${room_id}`);
-  
+
     // Kirim riwayat pesan dari room
     const query = `
-  SELECT messages.*, 
-         CONCAT(users.first_name, ' ', users.last_name) AS sender_name 
-  FROM messages 
-  INNER JOIN users ON messages.sender_id = users.user_id 
-  WHERE messages.room_id = ? 
-  ORDER BY messages.timestamp ASC
-`;
-  
+      SELECT messages.*, 
+             CONCAT(users.first_name, ' ', users.last_name) AS sender_name 
+      FROM messages 
+      INNER JOIN users ON messages.sender_id = users.user_id 
+      WHERE messages.room_id = ? 
+      ORDER BY messages.timestamp ASC
+    `;
+
     db.query(query, [room_id], (err, messages) => {
       if (err) {
         console.error("Failed to fetch chat history:", err);
@@ -181,7 +129,6 @@ io.on("connection", (socket) => {
       socket.emit("chat_history", messages); // Kirim riwayat pesan ke pengguna
     });
   });
-  
 
   // Event ketika pengguna mengirim pesan
   socket.on("send_message", ({ content, room_id }) => {
@@ -189,23 +136,23 @@ io.on("connection", (socket) => {
       console.error("Message content and room ID are required.");
       return;
     }
-  
+
     const sender_id = socket.user?.user_id; // Ambil sender_id dari token JWT
-  
+
     if (!sender_id) {
       console.error("Sender ID is null or undefined. Check token verification.");
       return;
     }
-  
+
     // Ambil nama pengguna dari database
     db.query("SELECT CONCAT(first_name, ' ', last_name) AS sender_name FROM users WHERE user_id = ?", [sender_id], (err, results) => {
       if (err || results.length === 0) {
         console.error("Error fetching sender name:", err);
         return;
       }
-  
+
       const sender_name = results[0].sender_name;
-  
+
       // Siapkan data pesan
       const message = {
         sender_id,
@@ -214,7 +161,7 @@ io.on("connection", (socket) => {
         room_id,
         timestamp: new Date(),
       };
-  
+
       // Simpan pesan ke database
       db.query(
         "INSERT INTO messages (sender_id, room_id, content, timestamp) VALUES (?, ?, ?, NOW())",
@@ -224,15 +171,13 @@ io.on("connection", (socket) => {
             console.error("Failed to save message to database:", err);
             return;
           }
-  
+
           // Broadcast pesan ke semua klien di room
           io.to(room_id).emit("receive_message", message);
         }
       );
     });
   });
-  
-  
 
   // Event ketika pengguna terputus
   socket.on("disconnect", () => {
@@ -241,28 +186,16 @@ io.on("connection", (socket) => {
 });
 
 // Default Route for Root
-app.get("/", (req, res) => {
+app.get("/api", (req, res) => {
   res.send("Welcome to Smartcon Backend API");
 });
 
 // Handle 404 Errors (Unknown Routes)
 app.use((req, res, next) => {
-  res.status(404).json({ message: "Route not found" });
+  res.status(404).send("Not Found");
 });
 
-// Global Error Handler
-app.use((err, req, res, next) => {
-  console.error("Error:", err.stack); // Menampilkan error ke console
-  res.status(500).json({
-    message: "Internal Server Error",
-    error: err.message,
-  });
-});
-
-
-
-// Start Server (menggunakan server HTTP untuk menambahkan Socket.IO)
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+// **Menjalankan server HTTPS**
+server.listen(3000, () => {
+  console.log("Server berjalan di https://localhost:3000");
 });
