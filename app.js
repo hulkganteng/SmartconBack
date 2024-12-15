@@ -30,7 +30,7 @@ const ca = fs.readFileSync("/etc/letsencrypt/live/smartconweb.my.id/chain.pem", 
 const credentials = { key: privateKey, cert: certificate, ca: ca };
 
 // **Membuat Server HTTPS**
-const server = https.createServer(credentials, app);  // Menggunakan https.createServer dengan sertifikat SSL
+const server = http.createServer(credentials, app);  // Menggunakan https.createServer dengan sertifikat SSL
 
 const io = socketIo(server, {
   cors: {
