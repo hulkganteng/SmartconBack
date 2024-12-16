@@ -63,31 +63,31 @@ io.use((socket, next) => {
   const token = socket.handshake.query.token; // Ambil token dari query parameter
   if (!token) {
     console.error("No token provided");
-    return next(new error("Authentication error"));
+    return next(new Error("Authentication error")); // Gunakan Error (huruf kapital)
   }
 
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
     if (err) {
       console.error("JWT verification failed:", err);
-      return next(new error("Authentication error"));
+      return next(new Error("Authentication error")); // Gunakan Error (huruf kapital)
     }
 
     const email = decoded.email; // Ambil email dari payload JWT
     if (!email) {
       console.error("Token does not contain email");
-      return next(new error("Authentication error"));
+      return next(new Error("Authentication error")); // Gunakan Error (huruf kapital)
     }
 
     // Query ke database untuk mendapatkan user_id berdasarkan email
     db.query("SELECT user_id FROM users WHERE email = ?", [email], (err, results) => {
       if (err) {
         console.error("Database query failed:", err);
-        return next(new error("Database error"));
+        return next(new Error("Database error")); // Gunakan Error (huruf kapital)
       }
 
       if (results.length === 0) {
         console.error("User not found for the given email");
-        return next(new error("Authentication error"));
+        return next(new Error("Authentication error")); // Gunakan Error (huruf kapital)
       }
 
       const user_id = results[0].user_id; // Ambil user_id dari hasil query
@@ -97,6 +97,7 @@ io.use((socket, next) => {
     });
   });
 });
+
 
 // Event Socket.IO
 io.on("connection", (socket) => {
